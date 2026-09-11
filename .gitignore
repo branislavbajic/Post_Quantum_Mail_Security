@@ -1,0 +1,5 @@
+# JetBrains IDE konfiguracija
+.idea/
+
+# Sve CMake build lokacije (Debug, Release, Profile, itd.)
+cmake-build-*/
