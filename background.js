@@ -1,0 +1,120 @@
+// Algoritmi
+
+const KEM_ALG = "ML-KEM-768";
+const DSA_ALG = "ML-DSA-65";
+
+// Master password
+let master_password = null;
+
+// Provera da li je WASM učitan
+
+var is_wasm_ready = false;
+var Module = {
+    onRuntimeInitialized: function () {
+        is_wasm_ready = true;
+        console.log("PQC Security: WASM runtime ready");
+    }
+}
+
+function whenWasmReady() {
+    if (is_wasm_ready) return Promise.resolve();
+    return new Promise((resolve) => {
+        const check = () => (is_wasm_ready ? resolve() : setTimeout(check, 20));
+        check();
+    });
+}
+
+// Helper funkcije
+
+async function getMyKeys() {
+    const { my_keys } = await messenger.storage.local.get("my_keys");
+
+    return my_keys || null;
+}
+
+// Funkcije za svaki tip zahteva
+
+async function getStatus() {
+
+    const my_keys = await getMyKeys();
+
+    return {
+        has_keys : !!my_keys,
+        is_unlocked : master_password !== null
+    }
+
+}
+
+async function generateKeys(master_password) {
+
+    if (!master_password || master_password.length < 5) {
+        return {
+            success: false,
+            error: "Master password must be at least 5 characters long."
+        };
+    }
+
+    const my_keys = await getMyKeys();
+
+    if (my_keys) {
+        return {
+            success: false,
+            error: "Keys already exist. Delete them first if you want to regenerate."
+        };
+    }
+
+    await whenWasmReady();
+
+    const kyber = new Module.Kyber(KEM_ALG);
+    const kem_public = kyber.generateKeyPair();
+    const kem_private = kyber.exportSecretKey();
+    kyber.delete();
+
+    const dilithium = new Module.Dilithium(DSA_ALG);
+    const dsa_public = dilithium.generateKeyPair();
+    const dsa_private = dilithium.exportSecretKey();
+    dilithium.delete();
+
+    const salt = randomBytes(16);
+    const key = await deriveMasterKey(master_password, salt);
+
+    const kem_encrypted_pk = await aesEncrypt(key, vecToUint8(kem_private));
+    const dsa_encrypted_pk = await aesEncrypt(key, vecToUint8(dsa_private));
+
+    const record = {
+        salt : bytesToBase64(salt),
+        kem_public : bytesToBase64(vecToUint8(kem_public)),
+        kem_encrypted_pk,
+        dsa_public : bytesToBase64(vecToUint8(dsa_public)),
+        dsa_encrypted_pk
+    };
+
+    await messenger.storage.local.set(
+        {
+            "my_keys" : record
+        }
+    );
+
+    master_password = key;
+
+    return {
+        success : true
+    };
+
+}
+
+browser.runtime.onMessage.addListener(
+    (request, sender) => {
+
+        switch (request.type) {
+
+            case "get_status":
+                return getStatus();
+            case "generate_keys":
+                return generateKeys(request.master_password);
+            default:
+                return undefined;
+        }
+
+    }
+)

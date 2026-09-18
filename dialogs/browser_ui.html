@@ -1,10 +1,42 @@
 <!DOCTYPE html>
 <html lang="en">
-<head>
-    <meta charset="UTF-8">
-    <title>Title</title>
-</head>
-<body>
 
-</body>
+    <head>
+        <meta charset="UTF-8">
+        <title>BB PQC Security</title>
+
+        <link rel="stylesheet" href="../css/style.css">
+        <script src="browser_ui.js" defer></script>
+    </head>
+
+    <body>
+
+        <div class="pqc-panel" style="width: 260px;">
+
+            <p class="pqc-title" id="pqc-heading">
+                <span class="pqc-icon-badge locked" id="pqc-badge">&#128274;</span>
+                <span id="pqc-heading-text">Thunderbird is not protected</span>
+            </p>
+
+            <p class="pqc-subtitle" id="pqc-subtitle">
+                Generate your post-quantum key pair to start encrypting and signing mail.
+            </p>
+
+            <div id="pqc-generate-section">
+                <label for="pqc-password">Master password</label>
+                <input type="password" id="pqc-password" placeholder="At least 4 characters">
+                <div class="pqc-error" id="pqc-error"></div>
+                <button class="primary" id="pqc-generate-btn" style="width: 100%; margin-top: 6px;">Generate Keys</button>
+            </div>
+
+            <div id="pqc-protected-section" style="display:none;">
+                <div class="pqc-status ok">Your ML-KEM and ML-DSA key pairs are ready.</div>
+                <button class="secondary" id="pqc-export-btn" style="width: 100%;">Export public keys (.pem)</button>
+                <p class="pqc-subtitle">Manage or delete your keys from the extension's Options page (wrench icon in Add-ons Manager).</p>
+            </div>
+
+        </div>
+
+    </body>
+
 </html>

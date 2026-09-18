@@ -1,37 +1,55 @@
 {
-  "manifest_version": 2,
-  "name": "PQC Thunderbird Extension",
-  "version": "1.0",
-  "description": "Post-quantum encryption and digital signatures",
-  "applications": {
-    "gecko": {
-      "id": "pqcmail@mydomain.com",
-      "strict_min_version": "115.0"
-    }
+  "manifest_version": 3,
+  "name": "PQC Security",
+  "version": "1.0.0",
+  "description": "Post-quantum key exchange (ML-KEM), signing (ML-DSA) and AES-GCM encryption for Thunderbird mail.",
+  "icons": {
+    "48": "icons/pqc_icon.png"
   },
-  "permissions": [
-    "storage",
-    "compose",
-    "messagesRead",
-    "activeTab"
-  ],
+
   "background": {
-    "scripts": ["background.js"]
+    "scripts": ["crypto_helpers.js", "background.js", "wasm/WASM_Crypto.js"]
   },
-  "browser_action": {
+
+  "content_security_policy": {
+    "extension_pages": "script-src 'self' 'wasm-unsafe-eval'; object-src 'self';"
+  },
+
+  "action": {
     "default_popup": "dialogs/browser_ui.html",
-    "default_title": "BB PQC Security"
+    "default_icon": "icons/pqc_icon.png",
+    "default_title": "PQC Security"
   },
+
   "compose_action": {
     "default_popup": "dialogs/compose_ui.html",
-    "default_title": "Mail Security"
+    "default_icon": "icons/pcc_icon.png",
+    "default_title": "Encrypt & Sign"
   },
+
   "message_display_action": {
     "default_popup": "dialogs/message_display_ui.html",
-    "default_title": "Decryption"
+    "default_icon": "icons/pqc_icon.png",
+    "default_title": "PQC Message"
   },
+
   "options_ui": {
-    "page": "options/keystore_ui.html",
+    "page": "options/options.html",
     "open_in_tab": true
+  },
+
+  "permissions": [
+    "storage",
+    "messagesRead",
+    "compose",
+    "addressBooks",
+    "downloads"
+  ],
+
+  "browser_specific_settings": {
+    "gecko": {
+      "id": "pqc-security@bb.com",
+      "strict_min_version": "128.0"
+    }
   }
 }

@@ -1,6 +1,80 @@
-#include <iostream>
+#include <emscripten/bind.h>
+#include <liboqs-cpp/oqs_cpp.hpp>
 
-int main() {
-    std::cout << "Something from something something" << std::endl;
-    return 0;
+using namespace emscripten;
+
+/*
+
+    Podsetnik:
+
+        - Klase oqs::KeyEncapsulation i oqs::Signature, interno rade sa oqs::bytes tipom koji predstavlja raw binary data,
+          a preporučeno je da se isti konvertuje u std::vector<uint_8> jer se taj tip kasnije lako pretvara od strane
+          Emscripten-a u Uint8Array koji koristi JavaScript.
+
+        - Registrovavenjm std::vector<uint8_t> u EMSCRIPTEN_BINDINGS, uz proizvoljno ime tipa, dajemo Emscripten-u instrukciju
+          da kada god naiđe na taj tip konvertuje isti u JavaScript pandan, a u njegovim podešavanjima je unapred određeno
+          koji tip se mapira na koji.
+
+*/
+
+class Kyber {
+
+    public:
+        explicit Kyber(const std::string& alg_name) : kyber(alg_name) {}
+
+        Kyber(const std::string& alg_name, const std::vector<uint8_t>& secret_key)
+            : kyber(alg_name, oqs::bytes(secret_key.begin(), secret_key.end())) {}
+
+        std::vector<uint8_t> generateKeyPair() {
+            auto public_key = kyber.generate_keypair();
+            return std::vector<uint8_t>(public_key.begin(), public_key.end());
+        }
+
+        std::vector<uint8_t> exportSecretKey() {
+            auto private_key = kyber.export_secret_key();
+            return std::vector<uint8_t>(private_key.begin(), private_key.end());
+        }
+
+    private:
+        oqs::KeyEncapsulation kyber; // objekat klase iz 'oqs' namespace-a za ML-KEM
+};
+
+class Dilithium {
+
+    public:
+        explicit Dilithium(const std::string& alg_name) : dilithium(alg_name) {}
+
+        Dilithium(const std::string& alg_name, const std::vector<uint8_t>& secret_key)
+            : dilithium(alg_name, oqs::bytes(secret_key.begin(), secret_key.end())) {}
+
+        std::vector<uint8_t> generateKeyPair() {
+            auto public_key = dilithium.generate_keypair();
+            return std::vector<uint8_t>(public_key.begin(), public_key.end());
+        }
+
+        std::vector<uint8_t> exportSecretKey() {
+            auto private_key = dilithium.export_secret_key();
+            return std::vector<uint8_t>(private_key.begin(), private_key.end());
+        }
+
+    private:
+        oqs::Signature dilithium; // objekat klase iz 'oqs' namespace-a za ML-DSA
+
+};
+
+EMSCRIPTEN_BINDINGS(oqs_module) {
+    register_vector<uint8_t>("ByteVector");
+
+    class_<Kyber>("Kyber")
+        .constructor<std::string>()
+        .constructor<std::string, std::vector<uint8_t>>()
+        .function("generateKeyPair", &Kyber::generateKeyPair)
+        .function("exportSecretKey", &Kyber::exportSecretKey);
+
+    class_<Dilithium>("Dilithium")
+        .constructor<std::string>()
+        .constructor<std::string, std::vector<uint8_t>>()
+        .function("generateKeyPair", &Dilithium::generateKeyPair)
+        .function("exportSecretKey", &Dilithium::exportSecretKey);
+
 }
