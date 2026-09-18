@@ -49,8 +49,8 @@ async function generateKeys(master_password) {
 
     if (!master_password || master_password.length < 5) {
         return {
-            success: false,
-            error: "Master password must be at least 5 characters long."
+            success : false,
+            error : "Master password must be at least 5 characters long."
         };
     }
 
@@ -58,8 +58,8 @@ async function generateKeys(master_password) {
 
     if (my_keys) {
         return {
-            success: false,
-            error: "Keys already exist. Delete them first if you want to regenerate."
+            success : false,
+            error : "Keys already exist. Delete them first if you want to regenerate."
         };
     }
 
@@ -103,6 +103,41 @@ async function generateKeys(master_password) {
 
 }
 
+async function exportPublicKeys() {
+
+    const my_keys = await getMyKeys();
+
+    if (!my_keys) {
+        return {
+            success : false,
+            error : "Keys are not yet generated!"
+        }
+    }
+
+    const lines = [
+        "-----BEGIN PQC PUBLIC KEY (ML-KEM-768)-----",
+        my_keys.kem_public.match(/.{1,64}/g).join("\n"),
+        "-----END PQC PUBLIC KEY (ML-KEM-768)-----",
+        "-----BEGIN PQC PUBLIC KEY (ML-DSA-65)-----",
+        my_keys.dsa_public.match(/.{1,64}/g).join("\n"),
+        "-----END PQC PUBLIC KEY (ML-DSA-65)-----",
+    ];
+    const pem = lines.join("\n");
+
+    const blob = new Blob([pem], { type: "application/x-pem-file" });
+    const url = URL.createObjectURL(blob);
+    try {
+        await messenger.downloads.download({ url, filename: "pqc-public-keys.pem", saveAs: true });
+        return { success: true };
+    } catch (e) {
+        return { success: false, error: e.message };
+    } finally {
+        setTimeout(() => URL.revokeObjectURL(url), 30000);
+    }
+}
+
+// main logic
+
 browser.runtime.onMessage.addListener(
     (request, sender) => {
 
@@ -112,6 +147,9 @@ browser.runtime.onMessage.addListener(
                 return getStatus();
             case "generate_keys":
                 return generateKeys(request.master_password);
+            case "export_public_keys":
+                return exportPublicKeys()
+
             default:
                 return undefined;
         }

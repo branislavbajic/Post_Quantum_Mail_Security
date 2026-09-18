@@ -64,6 +64,20 @@ document.getElementById("pqc-generate-btn").addEventListener("click", async () =
     }
 });
 
+document.getElementById("pqc-export-btn").addEventListener("click", async () => {
+
+    const result = await messenger.runtime.sendMessage(
+        {
+            type : "export_public_keys"
+        }
+    );
+
+    if (!result.success) {
+        error_message.textContent = result.error;
+    }
+
+});
+
 // Čim se učita stranica uradi refresh
 document.addEventListener("DOMContentLoaded", async () => {
     await refreshDisplay();
