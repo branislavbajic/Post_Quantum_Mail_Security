@@ -27,6 +27,12 @@ function vecToUint8(vec) {
     return arr;
 }
 
+function uint8ToVector(bytes) {
+    const vec = new Module.ByteVector();
+    for (let i = 0; i < bytes.length; i++) vec.push_back(bytes[i]);
+    return vec;
+}
+
 async function deriveMasterKey(master_password, salt_bytes) {
 
     const password_key = await crypto.subtle.importKey(
@@ -72,7 +78,7 @@ async function aesEncrypt(key, plaintext_bytes) {
 
 }
 
-async function aesGcmDecrypt(key, ivB64, ctB64) {
+async function aesDecrypt(key, ivB64, ctB64) {
     const iv = base64ToBytes(ivB64);
     const ct = base64ToBytes(ctB64);
     const plaintext = await crypto.subtle.decrypt(

@@ -34,7 +34,7 @@
   },
 
   "options_ui": {
-    "page": "options/options.html",
+    "page": "options/keystore_ui.html",
     "open_in_tab": true
   },
 

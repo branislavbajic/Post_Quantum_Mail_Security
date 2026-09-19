@@ -4,7 +4,7 @@ const KEM_ALG = "ML-KEM-768";
 const DSA_ALG = "ML-DSA-65";
 
 // Master password
-let master_password = null;
+let master_key = null;
 
 // Provera da li je WASM učitan
 
@@ -32,6 +32,37 @@ async function getMyKeys() {
     return my_keys || null;
 }
 
+async function unlock(master_password) {
+
+    const my_keys = await getMyKeys();
+
+    if (!my_keys) {
+        return {
+            success : false,
+            error : "No keys have been generated yet."
+        }
+    }
+
+    const salt = base64ToBytes(my_keys.salt);
+    const key = await deriveMasterKey(master_password, salt);
+
+    try {
+        await aesDecrypt(key, my_keys.kem_encrypted_pk.iv, my_keys.kem_encrypted_pk.ct);
+    }
+    catch (e) {
+        return {
+            success : false,
+            error : "Incorrect master password."
+        };
+    }
+
+    master_password = key;
+    return {
+        success : true
+    }
+
+}
+
 // Funkcije za svaki tip zahteva
 
 async function getStatus() {
@@ -40,7 +71,7 @@ async function getStatus() {
 
     return {
         has_keys : !!my_keys,
-        is_unlocked : master_password !== null
+        is_unlocked : master_key !== null
     }
 
 }
@@ -136,6 +167,23 @@ async function exportPublicKeys() {
     }
 }
 
+
+async function deleteKeys(master_password) {
+
+    const result = await unlock(master_password);
+    if (!result.success) {
+        return result;
+    }
+
+    await messenger.storage.local.remove("my_keys");
+    master_key = null;
+
+    return {
+        success : true
+    }
+
+}
+
 // main logic
 
 browser.runtime.onMessage.addListener(
@@ -149,7 +197,8 @@ browser.runtime.onMessage.addListener(
                 return generateKeys(request.master_password);
             case "export_public_keys":
                 return exportPublicKeys()
-
+            case "delete_keys":
+                return deleteKeys(request.master_password);
             default:
                 return undefined;
         }

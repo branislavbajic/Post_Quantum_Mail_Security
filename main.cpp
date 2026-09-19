@@ -8,12 +8,14 @@ using namespace emscripten;
     Podsetnik:
 
         - Klase oqs::KeyEncapsulation i oqs::Signature, interno rade sa oqs::bytes tipom koji predstavlja raw binary data,
-          a preporučeno je da se isti konvertuje u std::vector<uint_8> jer se taj tip kasnije lako pretvara od strane
-          Emscripten-a u Uint8Array koji koristi JavaScript.
+          a u suštini je samo alijas za std::vector<uint_8>, pa je preporučeno da se isti prilikom korišćenja konvertuje u
+          taj tip, jer se on kasnije lako pretvara od strane Emscripten-a u Uint8Array koji koristi JavaScript.
 
-        - Registrovavenjm std::vector<uint8_t> u EMSCRIPTEN_BINDINGS, uz proizvoljno ime tipa, dajemo Emscripten-u instrukciju
-          da kada god naiđe na taj tip konvertuje isti u JavaScript pandan, a u njegovim podešavanjima je unapred određeno
-          koji tip se mapira na koji.
+        - Registrovavenjm std::vector<uint8_t> u EMSCRIPTEN_BINDINGS, uz proizvoljno ime tipa, kreiramo wrapper klasu zadatog
+          naziva sa .size(), .get(i), .push_back(x) metodama, pomoću kojih JavaScript interaguje sa podacima ovog tipa.
+
+          Embind automatski razrešava samo primitive (numbers, bool, std::string), dok za klase, kontejnere i slično je
+          potrebna ovakva registracija da bih JavaScript kod uopšte mogao da im pristupa (uvek preko Modul.zadato_ime).
 
 */
 

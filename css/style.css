@@ -154,3 +154,21 @@ button.secondary {
 }
 .pqc-icon-badge.locked { background: var(--pqc-text-muted); }
 .pqc-icon-badge.unlocked { background: var(--pqc-success); }
+
+.pqc-options-page {
+    max-width: 640px;
+    margin: 0 auto;
+    padding: 24px;
+}
+
+.pqc-row {
+    display: flex;
+    gap: 8px;
+    align-items: center;
+}
+
+.pqc-divider {
+    border: none;
+    border-top: 1px solid var(--pqc-border);
+    margin: 4px 0;
+}
