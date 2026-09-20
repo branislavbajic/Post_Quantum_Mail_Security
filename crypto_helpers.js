@@ -1,5 +1,23 @@
 const PBKDF2_ITERATIONS = 600000;
 
+/*
+
+    Podsetnik:
+
+        - Kada se radi sa binarnim podacima koji predstavlja sliku (PNG/JPEG), kompresovanu datoteku, ili enkriptovane
+          podatke (kao u našem slučaju std::vector<uint8_t>), nije bezbedno da se oni direkno kopiraju u JSON, telo
+          mejla ili URL-ove (na primer, 0x00 se često tumači kao EOL, Ox22 kao ", pa to može napraviti haos) i onda
+          je neophodno da se prebace u siguran Base64 format (skup od tačno 64 bezbedna ASCII karaktera).
+
+        - U našem slučaju, metodi klasa iz main.cpp vraćaju Module.ByteVector (u suštini std::vector<uint8_t>), pa to
+          moramo prevesti u Uint8Array koji JavaScript razume (.vecToUint8()).
+
+          Zatim, kada te podatke čuvamo u JSON formatu, moraju se prebaciti u Base64 (.bytesToBase64()).
+
+          Kada se obrće postupak (treba da radimo sa sačuvanim podacima), koristimo .base64ToBytes() i .uint8ToVector()
+
+*/
+
 function bytesToBase64(bytes) {
     let binary = "";
     const chunk = 0x8000;
@@ -33,7 +51,28 @@ function uint8ToVector(bytes) {
     return vec;
 }
 
+function parsePublicKeyPem(pem_text) {
+    const kem_match = pem_text.match(
+        /-----BEGIN PQC PUBLIC KEY \(ML-KEM-768\)-----([\s\S]*?)-----END PQC PUBLIC KEY \(ML-KEM-768\)-----/
+    );
+    const dsa_match = pem_text.match(
+        /-----BEGIN PQC PUBLIC KEY \(ML-DSA-65\)-----([\s\S]*?)-----END PQC PUBLIC KEY \(ML-DSA-65\)-----/
+    );
+    if (!kem_match || !dsa_match) return null;
+    return {
+        kem_public: kem_match[1].replace(/\s+/g, ""),
+        dsa_public: dsa_match[1].replace(/\s+/g, ""),
+    };
+}
+
+
 async function deriveMasterKey(master_password, salt_bytes) {
+
+    /*
+        Da bi koristio .deriveKey(), input mora da bude u specificnom CryptoKey formatu, pa prvo od master lozinke
+        mora da se napravi takav objekat uz pomoć .importKey() funkcije (ulaz je raw data odnosno nije neki specifičan
+        format i može se kasnije koristiti samo za ono u "keyUsages" listi, odnosno samo za deriveKey)
+     */
 
     const password_key = await crypto.subtle.importKey(
         "raw",
@@ -43,6 +82,10 @@ async function deriveMasterKey(master_password, salt_bytes) {
         ["deriveKey"]
     );
 
+    /*
+        "extractable: false" znači da će JavaScript engine obezbediti da se sadržaj može samo koristiti za zadate
+        operacije (encrypt i decrypt), dok će bilo kakav pokušaj čitanja rezultovati greškom
+    */
     return crypto.subtle.deriveKey(
         {
             name : "PBKDF2",
@@ -63,6 +106,7 @@ async function deriveMasterKey(master_password, salt_bytes) {
 
 async function aesEncrypt(key, plaintext_bytes) {
 
+    // AES-u treba inicijalizacioni vektor (IV)
     const iv = randomBytes(12);
     const ciphertext = await crypto.subtle.encrypt(
         { name : "AES-GCM",

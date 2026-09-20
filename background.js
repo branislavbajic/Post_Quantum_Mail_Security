@@ -56,10 +56,17 @@ async function unlock(master_password) {
         };
     }
 
-    master_password = key;
+    master_key = key;
     return {
         success : true
     }
+
+}
+
+async function getContacts() {
+
+    const { my_contacts } = await messenger.storage.local.get("my_contacts");
+    return my_contacts || {};
 
 }
 
@@ -126,7 +133,7 @@ async function generateKeys(master_password) {
         }
     );
 
-    master_password = key;
+    master_key = key;
 
     return {
         success : true
@@ -184,6 +191,50 @@ async function deleteKeys(master_password) {
 
 }
 
+async function importContactKey(email, pem_text, label) {
+
+    const parsed = parsePublicKeyPem(pem_text);
+
+    if (!parsed) {
+        return {
+            success : false,
+            error : "That file doesn't look like a PQC Security public key export."
+        }
+    }
+
+    const email_key = email.trim().toLowerCase();
+    const contacts = await getContacts();
+
+    contacts[email_key] = {
+        ...parsed,
+        label: label || email,
+        added_at: Date.now()
+    };
+
+    await messenger.storage.local.set(
+        {
+            my_contacts : contacts
+        }
+    );
+
+
+    return {
+        success : true
+    };
+}
+
+async function listContacts() {
+    const contacts = await getContacts();
+
+    return Object.entries(contacts).map(([email, c]) => (
+        {
+            email,
+            label: c.label
+        }
+    ));
+
+}
+
 // main logic
 
 browser.runtime.onMessage.addListener(
@@ -199,6 +250,10 @@ browser.runtime.onMessage.addListener(
                 return exportPublicKeys()
             case "delete_keys":
                 return deleteKeys(request.master_password);
+            case "import_contact_key":
+                return importContactKey(request.email, request.pem_text, request.label);
+            case "list_contacts":
+                return listContacts();
             default:
                 return undefined;
         }

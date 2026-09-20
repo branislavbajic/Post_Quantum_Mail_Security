@@ -172,3 +172,24 @@ button.secondary {
     border-top: 1px solid var(--pqc-border);
     margin: 4px 0;
 }
+
+.pqc-list {
+    list-style: none;
+    margin: 0;
+    padding: 0;
+    max-height: 180px;
+    overflow-y: auto;
+    border: 1px solid var(--pqc-border);
+    border-radius: 6px;
+}
+
+.pqc-list li {
+    padding: 8px 10px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    border-bottom: 1px solid var(--pqc-border);
+}
+.pqc-list li:last-child { border-bottom: none; }
+
+.pqc-list .email { font-size: 12.5px; color: var(--pqc-text-muted); }
