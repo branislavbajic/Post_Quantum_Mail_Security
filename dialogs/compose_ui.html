@@ -1,10 +1,36 @@
 <!DOCTYPE html>
 <html lang="en">
-<head>
-    <meta charset="UTF-8">
-    <title>Title</title>
-</head>
-<body>
 
-</body>
+    <head>
+        <meta charset="UTF-8">
+        <title>BB PQC Compose</title>
+
+        <link rel="stylesheet" href="../css/style.css">
+        <script src="compose_ui.js" defer></script>
+    </head>
+
+    <body>
+
+        <div class="pqc-panel" style="width: 260px;">
+            <p class="pqc-title">Post-quantum protection</p>
+            <div class="pqc-status neutral" id="pqc-compose-status">Checking recipient...</div>
+
+            <div id="pqc-compose-unlock" style="display:none;">
+                <label for="pqc-compose-password">Master password</label>
+                <input type="password" id="pqc-compose-password">
+                <div class="pqc-error" id="pqc-compose-error"></div>
+                <button class="primary" id="pqc-compose-unlock-btn" style="width:100%; margin-top:6px;">Unlock</button>
+            </div>
+
+            <div class="pqc-checkbox-row">
+                <input type="checkbox" id="pqc-encrypt-toggle" disabled>
+                <label for="pqc-encrypt-toggle" style="margin:0;">Encrypt and sign this message</label>
+            </div>
+            <p class="pqc-subtitle">
+                Key exchange with ML-KEM, message encryption with AES-GCM, and signing with ML-DSA.
+                Only a single recipient is supported.
+            </p>
+        </div>
+
+    </body>
 </html>

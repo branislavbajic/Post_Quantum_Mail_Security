@@ -1,12 +1,14 @@
 // Algoritmi
-
 const KEM_ALG = "ML-KEM-768";
 const DSA_ALG = "ML-DSA-65";
 
 // Master password
 let master_key = null;
 
-// Provera da li je WASM učitan
+// For enable toggle persistance (tab_id --> boolean)
+const compose_encrypt_state = new Map();
+
+// ============== Provera da li je WASM učitan =========================================================================
 
 var is_wasm_ready = false;
 var Module = {
@@ -24,43 +26,12 @@ function whenWasmReady() {
     });
 }
 
-// Helper funkcije
+// ================= Helper funkcije ===================================================================================
 
 async function getMyKeys() {
     const { my_keys } = await messenger.storage.local.get("my_keys");
 
     return my_keys || null;
-}
-
-async function unlock(master_password) {
-
-    const my_keys = await getMyKeys();
-
-    if (!my_keys) {
-        return {
-            success : false,
-            error : "No keys have been generated yet."
-        }
-    }
-
-    const salt = base64ToBytes(my_keys.salt);
-    const key = await deriveMasterKey(master_password, salt);
-
-    try {
-        await aesDecrypt(key, my_keys.kem_encrypted_pk.iv, my_keys.kem_encrypted_pk.ct);
-    }
-    catch (e) {
-        return {
-            success : false,
-            error : "Incorrect master password."
-        };
-    }
-
-    master_key = key;
-    return {
-        success : true
-    }
-
 }
 
 async function getContacts() {
@@ -70,7 +41,7 @@ async function getContacts() {
 
 }
 
-// Funkcije za svaki tip zahteva
+// ================== Funkcije za svaki tip zahteva ====================================================================
 
 async function getStatus() {
 
@@ -174,6 +145,36 @@ async function exportPublicKeys() {
     }
 }
 
+async function unlock(master_password) {
+
+    const my_keys = await getMyKeys();
+
+    if (!my_keys) {
+        return {
+            success : false,
+            error : "No keys have been generated yet."
+        }
+    }
+
+    const salt = base64ToBytes(my_keys.salt);
+    const key = await deriveMasterKey(master_password, salt);
+
+    try {
+        await aesDecrypt(key, my_keys.kem_encrypted_pk.iv, my_keys.kem_encrypted_pk.ct);
+    }
+    catch (e) {
+        return {
+            success : false,
+            error : "Incorrect master password."
+        };
+    }
+
+    master_key = key;
+    return {
+        success : true
+    }
+
+}
 
 async function deleteKeys(master_password) {
 
@@ -253,7 +254,15 @@ async function removeContact(email) {
 
 }
 
-// main logic
+async function canEncrypt(email) {
+
+    const contacts = await getContacts();
+
+    return !!contacts[email.trim().toLowerCase()];
+
+}
+
+// ==================== MAIN LOGIC =====================================================================================
 browser.runtime.onMessage.addListener(
     (request, sender) => {
 
@@ -265,6 +274,8 @@ browser.runtime.onMessage.addListener(
                 return generateKeys(request.master_password);
             case "export_public_keys":
                 return exportPublicKeys()
+            case "unlock":
+                return unlock(request.master_password);
             case "delete_keys":
                 return deleteKeys(request.master_password);
             case "import_contact_key":
@@ -273,6 +284,23 @@ browser.runtime.onMessage.addListener(
                 return listContacts();
             case "remove_contact":
                 return removeContact(request.email);
+            case "can_encrypt":
+                return canEncrypt(request.email);
+            case "set_compose_encrypt_state":
+                compose_encrypt_state.set(request.tab_id, request.enabled);
+                messenger.composeAction.setBadgeText(
+                    {
+                        tabId : request.tab_id,
+                        text: request.enabled ? "\u{1F512}" : "",
+                    }
+                );
+                return Promise.resolve(
+                    {
+                        success : true
+                    }
+                );
+            case "get_compose_encrypt_state":
+                return Promise.resolve(!!compose_encrypt_state.get(request.tab_id));
             default:
                 return undefined;
         }

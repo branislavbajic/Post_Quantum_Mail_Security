@@ -23,7 +23,7 @@
 
   "compose_action": {
     "default_popup": "dialogs/compose_ui.html",
-    "default_icon": "icons/pcc_icon.png",
+    "default_icon": "icons/pqc_icon.png",
     "default_title": "Encrypt & Sign"
   },
 

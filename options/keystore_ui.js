@@ -169,7 +169,7 @@ document.getElementById("pqc-import-btn").addEventListener("click", async () => 
         }
     );
 
-    debugger;
+    //debugger;
     if (!result.success) {
         error_message.textContent = result.error;
         return;

@@ -193,3 +193,10 @@ button.secondary {
 .pqc-list li:last-child { border-bottom: none; }
 
 .pqc-list .email { font-size: 12.5px; color: var(--pqc-text-muted); }
+
+.pqc-checkbox-row {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-size: 13px;
+}
