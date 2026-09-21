@@ -172,15 +172,21 @@ function createArmor(envelope_object) {
 }
 
 function parseArmor(text) {
-    const start = text.indexOf(ARMOR_HEADER);
-    const end = text.indexOf(ARMOR_FOOTER);
-    console.log("Start: " + start + " End: " + end);
+    const strip = (s) => s.replace(/[\s=]+/g, "");
+    const compact = strip(text);
+    const header = strip(ARMOR_HEADER);
+    const footer = strip(ARMOR_FOOTER);
+
+    const start = compact.indexOf(header);
+    const end = compact.indexOf(footer);
     if (start === -1 || end === -1 || end < start) return null;
-    const body = text.slice(start + ARMOR_HEADER.length, end).replace(/\s+/g, "");
+
+    const raw = compact.slice(start + header.length, end);
+    const padded = raw + "=".repeat((4 - (raw.length % 4)) % 4);
+
     try {
-        return JSON.parse(atob(body));
+        return JSON.parse(atob(padded));
     } catch (e) {
-        console.log("Error appeared");
         return null;
     }
 }

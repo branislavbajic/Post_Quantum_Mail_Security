@@ -38,7 +38,8 @@ function enableToggle(email, tab_id) {
         );
     });
 }
-document.addEventListener("DOMContentLoaded", async () => {
+
+(async () => {
 
     const [tab] = await messenger.tabs.query(
         {
@@ -66,7 +67,7 @@ document.addEventListener("DOMContentLoaded", async () => {
 
     const status = await messenger.runtime.sendMessage(
         {
-            type : "get_status"
+            type: "get_status"
         }
     );
     if (!status.has_keys) {
@@ -76,7 +77,7 @@ document.addEventListener("DOMContentLoaded", async () => {
 
     const can_encrypt = await messenger.runtime.sendMessage(
         {
-            type : "can_encrypt",
+            type: "can_encrypt",
             email
         }
     );
@@ -96,7 +97,7 @@ document.addEventListener("DOMContentLoaded", async () => {
             const master_password = document.getElementById("pqc-compose-password").value;
             const result = await messenger.runtime.sendMessage(
                 {
-                    type : "unlock",
+                    type: "unlock",
                     master_password
                 }
             );
@@ -114,4 +115,4 @@ document.addEventListener("DOMContentLoaded", async () => {
     }
 
     enableToggle(email, tab.id);
-});
+})();

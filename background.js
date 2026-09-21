@@ -122,10 +122,10 @@ async function openEnvelope(ascii_armor, sender_mail) {
 
     const session_key = await deriveSessionKey(shared_secret);
     const inner_payload = await aesDecrypt(session_key, envelope.iv, envelope.ct);
-    const inner = JSON.parse(new TextDecoder().decode(innerBytes));
+    const inner = JSON.parse(new TextDecoder().decode(inner_payload));
 
     const contacts = await getContacts();
-    const contact = contacts[(senderEmail || "").trim().toLowerCase()];
+    const contact = contacts[(sender_mail || "").trim().toLowerCase()];
 
     let verified = null;
     if (contact) {
@@ -401,7 +401,7 @@ async function decryptMessage(message_id) {
         return {
             protected : false
         }
-    };
+    }
 
     const from_email = (header_info.author.match(/<([^>]+)>/) || [, header_info.author])[1];
 

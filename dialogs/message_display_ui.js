@@ -86,5 +86,5 @@ document.getElementById("pqc-unlock-btn").addEventListener("click", async () => 
 });
 
 document.addEventListener("DOMContentLoaded", async () => {
-    await loadAndDecrypt();
+    loadAndDecrypt();
 });
