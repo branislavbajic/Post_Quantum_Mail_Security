@@ -235,8 +235,25 @@ async function listContacts() {
 
 }
 
-// main logic
+async function removeContact(email) {
 
+    const contacts = await getContacts();
+
+    delete contacts[email.trim().toLowerCase()];
+
+    await messenger.storage.local.set(
+        {
+            my_contacts : contacts
+        }
+    );
+
+    return {
+        success : true
+    }
+
+}
+
+// main logic
 browser.runtime.onMessage.addListener(
     (request, sender) => {
 
@@ -254,6 +271,8 @@ browser.runtime.onMessage.addListener(
                 return importContactKey(request.email, request.pem_text, request.label);
             case "list_contacts":
                 return listContacts();
+            case "remove_contact":
+                return removeContact(request.email);
             default:
                 return undefined;
         }

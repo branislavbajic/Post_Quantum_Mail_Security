@@ -105,11 +105,26 @@ async function refreshContactsList() {
         return;
     }
 
-    for (const c of my_contacts) {
+    for (const contact of my_contacts) {
         const li = document.createElement("li");
         const span = document.createElement("span");
-        span.innerHTML = `${c.label}<br><span class="email">${c.email}</span>`;
+        span.innerHTML = `${contact.label}<br><span class="email">${contact.email}</span>`;
+
+        const remove_contact_button = document.createElement("button");
+        remove_contact_button.className = "secondary";
+        remove_contact_button.textContent = "Remove";
+        remove_contact_button.addEventListener("click", async () => {
+            await messenger.runtime.sendMessage(
+                {
+                    type: "remove_contact",
+                    email: contact.email
+                }
+            );
+            await refreshContactsList();
+        });
+
         li.appendChild(span);
+        li.appendChild(remove_contact_button);
         display_list.appendChild(li);
     }
 
