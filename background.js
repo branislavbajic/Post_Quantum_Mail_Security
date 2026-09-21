@@ -100,6 +100,77 @@ async function buildEnvelope(recipient_email, plaintext) {
 
 }
 
+async function openEnvelope(ascii_armor, sender_mail) {
+
+    const envelope = parseArmor(ascii_armor);
+    if (!envelope) {
+        return {
+            protected : false
+        }
+    }
+
+    if (!isUnlocked()) throw new Error("Locked. Unlock with your master password first.");
+
+    const my_keys = await getMyKeys();
+
+    await whenWasmReady();
+
+    const kem_private_key = await aesDecrypt(master_key, my_keys.kem_encrypted_pk.iv, my_keys.kem_encrypted_pk.ct);
+    const kyber = new Module.Kyber(KEM_ALG, uint8ToVector(kem_private_key));
+    const shared_secret = vecToUint8(kyber.decapsulate(uint8ToVector(base64ToBytes(envelope.kem_ct))));
+    kyber.delete();
+
+    const session_key = await deriveSessionKey(shared_secret);
+    const inner_payload = await aesDecrypt(session_key, envelope.iv, envelope.ct);
+    const inner = JSON.parse(new TextDecoder().decode(innerBytes));
+
+    const contacts = await getContacts();
+    const contact = contacts[(senderEmail || "").trim().toLowerCase()];
+
+    let verified = null;
+    if (contact) {
+        const dilithium = new Module.Dilithium(DSA_ALG);
+        verified = dilithium.verify(
+            uint8ToVector(new TextEncoder().encode(inner.body)),
+            uint8ToVector(base64ToBytes(inner.sig)),
+            uint8ToVector(base64ToBytes(contact.dsa_public))
+        )
+        dilithium.delete();
+    }
+
+    return {
+        protected : true,
+        body : inner.body,
+        verified,
+        sender_known : !!contact
+    };
+}
+
+/*
+
+    - MIME struktura mejla izgleda otprilike ovako:
+
+        multipart/mixed (whole message)
+            ├── multipart/alternative
+            │   ├── text/plain   <- what we actually want
+            │   └── text/html
+            └── application/pdf  (an attachment, say)
+
+    - Međutim, broj nivoa mora da varira pa se ovde koristi rekurzivna funkcija da nađe pod-objekat koji nam je potreban
+
+*/
+
+function findPlainTextPart(part) {
+    if (part.contentType && part.contentType.startsWith("text/plain") && part.body) {
+        return part.body;
+    }
+    for (const child of part.parts || []) {
+        const found = findPlainTextPart(child);
+        if (found) return found;
+    }
+    return null;
+}
+
 // ================== Funkcije za svaki tip zahteva ====================================================================
 
 async function getStatus() {
@@ -321,6 +392,30 @@ async function canEncrypt(email) {
 
 }
 
+async function decryptMessage(message_id) {
+    const full = await messenger.messages.getFull(message_id);
+    const header_info = await messenger.messages.get(message_id);
+    const plain_part = findPlainTextPart(full);
+
+    if (!plain_part) {
+        return {
+            protected : false
+        }
+    };
+
+    const from_email = (header_info.author.match(/<([^>]+)>/) || [, header_info.author])[1];
+
+    try {
+        return await openEnvelope(plain_part, from_email);
+    }
+    catch (e) {
+        return {
+            protected : true,
+            error : e.message
+        }
+    }
+}
+
 // ==================== MAIN LOGIC =====================================================================================
 browser.runtime.onMessage.addListener(
     (request, sender) => {
@@ -360,6 +455,8 @@ browser.runtime.onMessage.addListener(
                 );
             case "get_compose_encrypt_state":
                 return Promise.resolve(!!compose_encrypt_state.get(request.tab_id));
+            case "decrypt_message":
+                return decryptMessage(request.message_id);
             default:
                 return undefined;
         }
@@ -402,5 +499,17 @@ messenger.compose.onBeforeSend.addListener(async (tab, details) => {
         };
     }
 
-})
+});
+
+/*messenger.messageDisplay.onMessagesDisplayed.addListener((tab, messageList) => {
+    const messages = (messageList && messageList.messages) || [];
+
+    //console.log(messages[0].folder);
+    const folderType = messages[0] && messages[0].folder && messages[0].folder.type;
+    if (folderType === "sent") {
+        messenger.messageDisplayAction.disable(tab.id);
+    } else {
+        messenger.messageDisplayAction.enable(tab.id);
+    }
+});*/
 

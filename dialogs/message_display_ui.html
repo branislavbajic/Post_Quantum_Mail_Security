@@ -1,10 +1,29 @@
 <!DOCTYPE html>
 <html lang="en">
-<head>
-    <meta charset="UTF-8">
-    <title>Title</title>
-</head>
-<body>
 
-</body>
+    <head>
+        <meta charset="UTF-8">
+        <title>BB PQC Message Display</title>
+
+        <link rel="stylesheet" href="../css/style.css">
+        <script src="message_display_ui.js" defer></script>
+    </head>
+
+    <body>
+        <div class="pqc-panel" style="width: 320px;">
+            <p class="pqc-title">PQC Message</p>
+            <div class="pqc-status neutral" id="pqc-msg-status">Checking message...</div>
+
+            <div id="pqc-unlock-section" style="display:none;">
+                <label for="pqc-msg-password">Master password</label>
+                <input type="password" id="pqc-msg-password">
+                <div class="pqc-error" id="pqc-msg-error"></div>
+                <button class="primary" id="pqc-unlock-btn" style="width:100%; margin-top:6px;">Unlock</button>
+            </div>
+
+            <div id="pqc-body-section" style="display:none;">
+                <div class="pqc-message-body" id="pqc-msg-body"></div>
+            </div>
+        </div>
+    </body>
 </html>

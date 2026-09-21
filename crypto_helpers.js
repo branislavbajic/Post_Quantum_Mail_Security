@@ -170,3 +170,17 @@ function createArmor(envelope_object) {
     const wrapped = b64.match(/.{1,64}/g).join("\n");
     return `${ARMOR_HEADER}\n${wrapped}\n${ARMOR_FOOTER}`;
 }
+
+function parseArmor(text) {
+    const start = text.indexOf(ARMOR_HEADER);
+    const end = text.indexOf(ARMOR_FOOTER);
+    console.log("Start: " + start + " End: " + end);
+    if (start === -1 || end === -1 || end < start) return null;
+    const body = text.slice(start + ARMOR_HEADER.length, end).replace(/\s+/g, "");
+    try {
+        return JSON.parse(atob(body));
+    } catch (e) {
+        console.log("Error appeared");
+        return null;
+    }
+}

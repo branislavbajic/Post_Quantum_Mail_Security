@@ -200,3 +200,13 @@ button.secondary {
     gap: 8px;
     font-size: 13px;
 }
+
+.pqc-message-body {
+    white-space: pre-wrap;
+    background: var(--pqc-bg-alt);
+    border-radius: 6px;
+    padding: 10px;
+    max-height: 260px;
+    overflow-y: auto;
+    font-size: 13px;
+}
