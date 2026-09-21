@@ -1,4 +1,6 @@
 const PBKDF2_ITERATIONS = 600000;
+const ARMOR_HEADER = "-----BEGIN PQC MESSAGE-----";
+const ARMOR_FOOTER = "-----END PQC MESSAGE-----";
 
 /*
 
@@ -135,4 +137,36 @@ async function aesDecrypt(key, ivB64, ctB64) {
     );
 
     return new Uint8Array(plaintext);
+}
+
+async function deriveSessionKey(shared_secret_bytes) {
+
+    const hkdf_key = await crypto.subtle.importKey(
+        "raw",
+        shared_secret_bytes,
+        "HKDF",
+        false,
+        ["deriveKey"]
+    );
+
+    return crypto.subtle.deriveKey(
+        {
+            name: "HKDF",
+            hash: "SHA-256",
+            salt: new Uint8Array(0),
+            info: new TextEncoder().encode("pqc-security-session-key-v1"),
+        },
+        hkdf_key,
+        { name: "AES-GCM", length: 256 },
+        false,
+        ["encrypt", "decrypt"]
+    );
+
+}
+
+function createArmor(envelope_object) {
+    const json = JSON.stringify(envelope_object);
+    const b64 = btoa(json);
+    const wrapped = b64.match(/.{1,64}/g).join("\n");
+    return `${ARMOR_HEADER}\n${wrapped}\n${ARMOR_FOOTER}`;
 }

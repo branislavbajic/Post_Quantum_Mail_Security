@@ -2,6 +2,8 @@
 const KEM_ALG = "ML-KEM-768";
 const DSA_ALG = "ML-DSA-65";
 
+const ENVELOPE_VERSION = 1;
+
 // Master password
 let master_key = null;
 
@@ -28,6 +30,10 @@ function whenWasmReady() {
 
 // ================= Helper funkcije ===================================================================================
 
+function isUnlocked() {
+    return master_key !== null;
+}
+
 async function getMyKeys() {
     const { my_keys } = await messenger.storage.local.get("my_keys");
 
@@ -41,6 +47,59 @@ async function getContacts() {
 
 }
 
+// ComposeDetails recipient je "Name <email>" ili običan email
+function extractRecipientEmail(entry) {
+    if (typeof entry !== "string") return null;
+    const match = entry.match(/<([^>]+)>/);
+    return (match ? match[1] : entry).trim().toLowerCase();
+}
+
+async function buildEnvelope(recipient_email, plaintext) {
+
+    if (!isUnlocked()) throw new Error("Locked. Unlock with your master password first.");
+
+    const my_keys = await getMyKeys();
+    const contacts = await getContacts();
+    const contact = contacts[recipient_email.trim().toLowerCase()];
+
+    await whenWasmReady();
+
+    // Potpisivanje
+    const dsa_private_key = await aesDecrypt(master_key, my_keys.dsa_encrypted_pk.iv, my_keys.dsa_encrypted_pk.ct);
+    const dilithium = new Module.Dilithium(DSA_ALG, uint8ToVector(dsa_private_key));
+    const signature = vecToUint8(dilithium.sign(uint8ToVector(new TextEncoder().encode(plaintext))));
+    dilithium.delete();
+
+    const inner_payload = JSON.stringify(
+        {
+            body : plaintext,
+            sig : bytesToBase64(signature)
+        }
+    );
+
+    // Enkapsulacija (razmena simetričnog ključa)
+    const kyber = new Module.Kyber(KEM_ALG);
+    const recipient_public_key = base64ToBytes(contact.kem_public);
+    const encapsulated_result = kyber.encapsulate(uint8ToVector(recipient_public_key));
+    const kem_ciphertext = vecToUint8(encapsulated_result.ciphertext);
+    const shared_secret = vecToUint8(encapsulated_result.shared_secret);
+    kyber.delete();
+
+    const session_key = await deriveSessionKey(shared_secret);
+    const {iv, ct} = await aesEncrypt(session_key, new TextEncoder().encode(inner_payload));
+
+    return createArmor(
+        {
+            v: ENVELOPE_VERSION,
+            alg: `${KEM_ALG}/${DSA_ALG}`,
+            kem_ct: bytesToBase64(kem_ciphertext),
+            iv,
+            ct,
+        }
+    );
+
+}
+
 // ================== Funkcije za svaki tip zahteva ====================================================================
 
 async function getStatus() {
@@ -49,7 +108,7 @@ async function getStatus() {
 
     return {
         has_keys : !!my_keys,
-        is_unlocked : master_key !== null
+        is_unlocked : isUnlocked()
     }
 
 }
@@ -306,4 +365,42 @@ browser.runtime.onMessage.addListener(
         }
 
     }
-)
+);
+
+// presretanje slanja poruke i enkriptovanje sadržaja ako je izabrana ta opcija
+messenger.compose.onBeforeSend.addListener(async (tab, details) => {
+
+    const pqc_enabled = compose_encrypt_state.get(tab.id);
+    if (!pqc_enabled) return {};
+
+    const recipients = [].concat(details.to || []);
+    const recipient_email = extractRecipientEmail(recipients[0]);
+    if (!recipient_email) {
+        return {
+            cancel : true
+        };
+    }
+
+    const plaintext = details.plainTextBody || details.body || "";
+
+    try {
+        const ascii_armor = await buildEnvelope(recipient_email, plaintext);
+
+        return {
+            cancel : false,
+            details: {
+                isPlainText : true,
+                plainTextBody : ascii_armor,
+                body : ascii_armor
+            }
+        };
+    }
+    catch (e) {
+        console.error("PQC Security: failed to protect outgoing message:", e);
+        return {
+            cancel: true
+        };
+    }
+
+})
+
