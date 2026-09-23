@@ -480,6 +480,11 @@ messenger.compose.onBeforeSend.addListener(async (tab, details) => {
 
     const plaintext = details.plainTextBody || details.body || "";
 
+    // double-wrapping zaštita
+    if (plaintext.includes(ARMOR_HEADER)) {
+        return {};
+    }
+
     try {
         const ascii_armor = await buildEnvelope(recipient_email, plaintext);
 
